@@ -173,10 +173,10 @@ class GeneticAlgo():
             subfig_debug[i%debugger_dims[0]][i%debugger_dims[1]].set_ylim([-0.2, 0.2])
 
         for i in range(debugger_dims[0]):
-            subfig_debug[i][0].set_ylabel('Position')
+            subfig_debug[i][0].set_ylabel('Angle [rad]')
 
         for i in range(debugger_dims[1]):
-            subfig_debug[-1][i].set_xlabel('Time')
+            subfig_debug[-1][i].set_xlabel('Time [s]')
         # plt.legend()
         plt.pause(0.001)
         plot_end_time = timeit.default_timer()
@@ -205,13 +205,13 @@ class GeneticAlgo():
             subfig1[0].plot(self.time_list, self.all_states[:, self.index, 0], 'orangered', label='angle')
             # print(self.all_states[:, index, 0])
             # plt.plot(self.x_tgt, 0, 'ro')
-            subfig1[0].set_xlabel('time [s]')
-            subfig1[0].set_ylabel('theta', color=color)
+            subfig1[0].set_xlabel('Time [s]')
+            subfig1[0].set_ylabel('Angle [rad]', color=color)
             subfig1[0].tick_params(axis='y', labelcolor=color)
 
             color = 'tab:blue'
             subfig2.plot(self.time_list, self.all_states[:, self.index, 2], 'dodgerblue', label='position')
-            subfig2.set_ylabel('position', color=color)
+            subfig2.set_ylabel('Position [m]', color=color)
             subfig2.tick_params(axis='y', labelcolor=color)
             fig1.tight_layout()  # otherwise the right y-label is slightly clipped
 
