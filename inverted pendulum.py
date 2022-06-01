@@ -11,18 +11,21 @@ def theta_dd(theta, dtheta, x_dd):
 ### Genetic Alogorithm ###
 fig1, subfig1 = plt.subplots(1,2)
 subfig2 = subfig1[0].twinx()
-fig1.suptitle('katyusha:) Algorithm')
+fig1.suptitle('Katyusha Algorithm')
 
-debugger_dims = (5,7)
-fig_debug, subfig_debug = plt.subplots(debugger_dims[0],debugger_dims[1], sharex=True, sharey=True)
-fig_debug.suptitle('Debugger.... ')
+debugger_dims = (4, 5)
+
 
 # function used for python sorted()
 def take_last(elem):
     return elem[5]
 
 class GeneticAlgo():
-    def __init__(self, max_itr, elite_cutoff, init_gains, time_list, init_conds, tgt):
+    def __init__(self, max_itr, elite_cutoff, init_gains, time_list, init_conds, tgt, debug):
+        self.debug= debug
+        if debug:
+            self.fig_debug, self.subfig_debug = plt.subplots(debugger_dims[0], debugger_dims[1], sharex=True, sharey=True)
+            self.fig_debug.suptitle('Debugger.... ')
         self.max_itr = max_itr
         self.elite_cutoff = elite_cutoff
         self.theta_kp = init_gains[0]
@@ -40,6 +43,7 @@ class GeneticAlgo():
         self.best_gains_history = []
         self.best_gains_index = 0
 
+    # function to initialize population
     def PopInit(self, size, mutation_rate):
         """
         Function returning an array of PD populations, VERIFIED
@@ -74,7 +78,7 @@ class GeneticAlgo():
         self.all_states[0, :, 0:4] = self.sim_states
 
         init_pop_end_time = timeit.default_timer()
-        print(f'{init_pop_end_time}: Population initialized ({(init_pop_end_time- init_pop_start_time)/1000} ms)')
+        print(f'{init_pop_end_time}: Population initialized ({(init_pop_end_time- init_pop_start_time)*1000} ms)')
 
     # function to simulate the system
     def Simulate(self):
@@ -109,7 +113,7 @@ class GeneticAlgo():
         self.sim_states[:, 3] = self.dx0
 
         sim_end_time = timeit.default_timer()
-        print(f'{sim_end_time}: Simulation finished ({(sim_end_time- sim_start_time)/1000} ms)')
+        print(f'{sim_end_time}: Simulation finished ({(sim_end_time- sim_start_time)*1000} ms)')
 
     # function to calculate fitness and sort individuals
     def Sorting(self):
@@ -120,13 +124,13 @@ class GeneticAlgo():
         sort_start_time = timeit.default_timer()
         print(f'{sort_start_time}: Sorting...')
         self.fitnesses = (np.sum(np.sqrt(self.all_states[:, :, 0]**2), axis = 0) \
-                         + np.sum((self.all_states[:, :, 2]-self.x_tgt)**2, axis = 0))\
-                         + 1
+                         + 1000*np.sum(np.sqrt((self.all_states[:, :, 2]-self.x_tgt)**2), axis = 0))
         self.gains[5, :] = self.fitnesses
 
         self.sorted_gains = np.transpose(np.array(sorted(np.transpose(self.gains), key=take_last)))
         sort_end_time = timeit.default_timer()
-        print(f'{sort_end_time}: Sorting finished ({(sort_end_time- sort_start_time)/1000} ms)')
+        print(f'{sort_end_time}: Sorting finished ({(sort_end_time- sort_start_time)*1000} ms)')
+
     # function to breed the best individuals
     def Breed(self, mum, dad):
         """
@@ -166,21 +170,36 @@ class GeneticAlgo():
         """
         plot_start_time = timeit.default_timer()
         print(f'{plot_start_time}: Debug plotting...')
-        fig_debug.suptitle(f'Debugger epoch {epoch}')
-        for i in range(self.size):
-            subfig_debug[i%debugger_dims[0]][i%debugger_dims[1]].cla()
-            subfig_debug[i%debugger_dims[0]][i%debugger_dims[1]].plot(self.time_list, self.all_states[:, i, 0])
-            subfig_debug[i%debugger_dims[0]][i%debugger_dims[1]].set_ylim([-0.2, 0.2])
+        self.fig_debug.suptitle(f'Debugger epoch {epoch}')
+        for i in range(debugger_dims[0]*debugger_dims[1]):
+            self.subfig_debug[i%debugger_dims[0]][i%debugger_dims[1]].cla()
+            self.subfig_debug[i%debugger_dims[0]][i%debugger_dims[1]].plot(self.time_list, self.all_states[:, i, 0], label=f'{self.gains[-1, i]}')
+            self.subfig_debug[i % debugger_dims[0]][i % debugger_dims[1]].plot(self.time_list, self.all_states[:, i, 2])
+            self.subfig_debug[i%debugger_dims[0]][i%debugger_dims[1]].set_ylim([-0.8, 0.8])
+
+        # best and worst gains plotting
+        self.subfig_debug[0][0].cla()
+        self.subfig_debug[0][0].plot(self.time_list, self.all_states[:, self.best_gains_index, 0], label=f'{self.gains[-1, self.best_gains_index]}')
+        self.subfig_debug[0][0].plot(self.time_list, self.all_states[:, self.best_gains_index, 2],)
+        self.subfig_debug[0][0].set_ylim([-0.6, 0.6])
+        self.subfig_debug[0][0].set_title('Best gains')
+
+        worst_one_rn = self.sorted_gains[:, -1].transpose()
+        self.worst_index = int(worst_one_rn[-2])
+        self.subfig_debug[0][1].cla()
+        self.subfig_debug[0][1].plot(self.time_list, self.all_states[:, self.worst_index, 0], label=f'{self.gains[-1, self.worst_index]}')
+        self.subfig_debug[0][1].plot(self.time_list, self.all_states[:, self.worst_index, 2], )
+        self.subfig_debug[0][1].set_ylim([-0.6, 0.6])
+        self.subfig_debug[0][1].set_title('Worst gains')
 
         for i in range(debugger_dims[0]):
-            subfig_debug[i][0].set_ylabel('Angle [rad]')
+            self.subfig_debug[i][0].set_ylabel('Angle [rad]')
 
         for i in range(debugger_dims[1]):
-            subfig_debug[-1][i].set_xlabel('Time [s]')
+            self.subfig_debug[-1][i].set_xlabel('Time [s]')
         # plt.legend()
-        plt.pause(0.001)
         plot_end_time = timeit.default_timer()
-        print(f'{plot_end_time}: Debug plotting finished ({(plot_end_time- plot_start_time)/1000} ms)')
+        print(f'{plot_end_time}: Debug plotting finished ({(plot_end_time- plot_start_time)*1000} ms)')
 
     # function to display the GA results
     def Display(self, i):
@@ -188,15 +207,21 @@ class GeneticAlgo():
         Function to display the best individual
         :return:
         """
+        if self.debug:
+            self.PlotDebugger(i)
+        find_best_one_start_time = timeit.default_timer()
+        print(f'{find_best_one_start_time}: Plotting best individual...')
         best_one_rn = self.sorted_gains[:, 0].transpose()
+        # print(f'0th gain{self.sorted_gains[:, 0]}\nlast-th gain {self.sorted_gains[:, -1]}')
         self.best_gains_history.append(list(best_one_rn))
         if best_one_rn[-1] < self.best_fitness:
             # print(f'New best fitness!\ngains: {best_one_rn[0:4]}')
+            # if i < (self.max_itr-1):
             subfig1[0].cla()
             subfig2.cla()
             self.best_fitness = best_one_rn[-1]
             self.best_gains = best_one_rn[0:4]
-            self.best_gains_index = best_one_rn[-2]
+            self.best_gains_index = int(best_one_rn[-2])
             self.index = int(self.best_gains_index)
             # print(index)
 
@@ -218,14 +243,19 @@ class GeneticAlgo():
         print(f'Best fitness: {self.best_fitness}')
 
         # plotting fitness history
-        subfig1[1].cla()
+        if i < (self.max_itr-1):
+            subfig1[1].cla()
         subfig1[1].set_title('Fitness history')
         ndarray_gains = np.array(self.best_gains_history)
         fitness_to_plot = (ndarray_gains[:, -1])
+        fitness_to_plot[:] = fitness_to_plot[0]/fitness_to_plot[:]      # making all fitness to be multiples of initial fitness
         subfig1[1].plot(np.linspace(1, i+1, i+1), fitness_to_plot)
         subfig1[1].set_xlabel('Epoch')
         subfig1[1].set_ylabel('Fitness')
-        plt.pause(0.1)
+        subfig1[1].grid()
+
+        find_the_best_one_end_time = timeit.default_timer()
+        print(f'{find_the_best_one_end_time}: Plotting best individual finished ({(find_the_best_one_end_time- find_best_one_start_time)*1000} ms)')
 
 
 
@@ -236,11 +266,11 @@ ixx = 1
 m_cart = 1
 
 # simulation constants
-theta, dtheta, ddtheta = 0.2, 0, 0      # initial theta conditions
+theta, dtheta, ddtheta = 1.0, 0, 0      # initial theta conditions
 x, dx, ddx = 0, 0, 0                    # initial position conditions
 
 x_tgt, dx_tgt = 0, 0                    # target position
-timestep, t = 0.001, 0                  # timestep and time
+timestep, t = 0.1, 0                  # timestep and time
 
 # lists to store states
 theta_list = []
@@ -249,24 +279,30 @@ ddx_list = []
 x_tgt_list = []
 t_list = []
 
+# # initial PD controller gains
+# theta_kp0 = -g*4
+# theta_kd0 = -2
+# x_kp0 = 0.5
+# x_kd0 = 1.2
+
 # initial PD controller gains
-theta_kp0 = -g*6
+theta_kp0 = -g*11
 theta_kd0 = -2
-x_kp0 = 1.3
-x_kd0 = 0.3
+x_kp0 = 1
+x_kd0 = 1.2
 
 # GA parameters
-maximum_iterations = 100
-pop_size = 35
-mutate_rate = 0.4
-elite_cutoff = 0.25
+maximum_iterations = 200
+pop_size = int(1*10**3)
+mutate_rate = 0.8
+elite_cutoff = 0.1
 gains = [theta_kp0, theta_kd0, x_kp0, x_kd0]
-time_list = np.arange(0, 12, timestep)
+time_list = np.arange(0, 8, timestep)
 initial_conditions = [theta, dtheta, x, dx, ddtheta, ddx]
 tgt = [x_tgt, dx_tgt]
 
 # initializing the GA
-optimizer = GeneticAlgo(maximum_iterations, elite_cutoff, gains, time_list, initial_conditions, tgt)
+optimizer = GeneticAlgo(maximum_iterations, elite_cutoff, gains, time_list, initial_conditions, tgt, debug=0)
 optimizer.PopInit(pop_size, mutate_rate)
 
 ### Genetic Algorithm Loop###
@@ -276,16 +312,19 @@ for j in range(maximum_iterations):
     optimizer.Simulate()
     optimizer.Sorting()
     optimizer.Evolve()
-    optimizer.PlotDebugger(j)
     optimizer.Display(j)
+    print(optimizer.best_gains)
+    plt.pause(0.002)
     epoc_end_time = timeit.default_timer()
-    print(f'Epoch duration: {epoc_end_time - epoc_start_time}')
+    print(f'Epoch duration: {epoc_end_time - epoc_start_time} s')
 
 best_gains = optimizer.best_gains
-print(f'\n\nFinished optimizing\nBest gains: {best_gains}')
+print(f'\n\n>>>>>>Finished optimizing<<<<<<\nBest gains: {best_gains}\n\n')
 plt.show()
 
-
+file1 = open("best_gains.txt", "w")
+file1.write(f'{best_gains, timeit.default_timer()} \n')
+file1.close()
 
 # pg viewer intialization
 res = [700, 300]
@@ -310,8 +349,11 @@ theta_kp = best_gains[0]
 theta_kd = best_gains[1]
 x_kp = best_gains[2]
 x_kd = best_gains[3]
+timestep = 0.01
 
 ## Pygame Simulation Loop###
+frame_time = 0
+frame_list = []
 running = 1
 play = 0
 while running:
@@ -326,7 +368,7 @@ while running:
     # dynamics stuff
     ddx = theta*theta_kp+dtheta*theta_kd+(x-x_tgt)*x_kp+(dx-dx_tgt)*x_kd
     # ddx = -theta*g*2-dtheta*4+(x-x_tgt)*0.6+(dx-dx_tgt)*0.8
-
+    ddx_list.append(ddx)
     # integration stuff
     dx += ddx*dt
     x += dx*dt
@@ -388,22 +430,30 @@ while running:
 
     tic = timeit.default_timer()
 
-    print(f'frame time: {1000*round(tic-toc, 8)} ms')
+
+    frame_list.append(1000*(tic-toc))
+    if len(frame_list) > 5000:
+        print(f'frame time: {round(sum(frame_list)/len(frame_list), 8)} ms')
+        frame_list = []
+
 
 pg.quit()
 
 
-fig, axs = plt.subplots(2, 1, sharex='col')
+fig, axs = plt.subplots(2, 2, sharex=True)
 fig.suptitle('Inverted pendulum :0000')
 
-axs[0].plot(t_list, x_list, label='x')
-axs[0].plot(t_list, x_tgt_list, label='x tgt')
-axs[0].legend(loc='upper right')
-axs[0].grid()
-axs[0].set_ylabel('[m]')
-axs[1].plot(t_list, theta_list, label='theta')
-axs[1].legend(loc='upper right')
-axs[1].grid()
-axs[1].set_ylabel('[rad]')
+axs[0,0].plot(t_list, x_list, label='x')
+axs[0,0].plot(t_list, x_tgt_list, label='x tgt')
+axs[0,0].legend(loc='upper right')
+axs[0,0].grid()
+axs[0,0].set_ylabel('[m]')
+axs[1,0].plot(t_list, theta_list, label='theta')
+axs[1,0].legend(loc='upper right')
+axs[1,0].grid()
+axs[1,0].set_ylabel('[rad]')
+axs[0,1].plot(t_list, ddx_list, label='ddx')
+axs[0,1].legend(loc='upper right')
+axs[0,1].grid()
 plt.show()
 
