@@ -6,6 +6,8 @@ import timeit
 
 np.random.seed(123)
 
+# git test
+
 def theta_dd(theta, dtheta, x_dd):
     return (g*l*np.sin(theta)+x_dd*l*np.cos(theta))/(ixx+l**2)-dtheta/100
 
